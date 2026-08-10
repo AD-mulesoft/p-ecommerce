@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="Checkout_Flow" doc:id="c2dee924-16f0-450b-a4a1-e2163aa977b7" maxConcurrency="1">
+		<scheduler doc:name="Scheduler" doc:id="ae0fbb3c-8959-43f5-8e38-c6e854d5d3df" >
+			<scheduling-strategy >
+				<cron expression="0 0 1 ? * * *" timeZone="America/Santiago"/>
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="INIT" doc:id="208285a1-5bff-4db0-8aef-05f192f30c02" message="INIT Checkout_Flow"/>
+		<flow-ref doc:name="Shopify_Checkout_subFlow" doc:id="95dfaae4-7c17-45f7-9396-0fe004b498c4" name="Shopify_Checkout_subFlow"/>
+		<!-- [STUDIO:"s-shopify /checkout"]<http:request method="GET" doc:name="s-shopify /checkout" doc:id="a520719a-a904-41cd-9dbc-ea2e23e43eba" config-ref="HTTP_Request_configuration_s-shopify" path="${s-shopify.basePath}${s-shopify.checkout.path}">
+				<http:query-params><![CDATA[#[vars.queryParams&#93;&#93;&#93;></http:query-params>
+			</http:request> [STUDIO] -->
+		<choice doc:name="Choice" doc:id="6ab09bf6-71a6-4d40-ac46-4756032a0b1c" >
+			<when expression="#[!isEmpty(payload.checkouts)]">
+				<logger level="INFO" doc:name="sizeOf(payload.checkouts)" doc:id="662be88b-8a88-483f-af63-51f7bac1ecca" message='#["Retrieved " ++ sizeOf(payload.checkouts) ++ " Records"]'/>
+				<ee:transform doc:name="Format Lead Req" doc:id="a5ee1748-d5f6-49c5-9aff-85391484d114">
+			<ee:message>
+				<ee:set-payload resource="salesforce/lead.dwl" />
+			</ee:message>
+		</ee:transform>
+				<ee:transform doc:name="Add source" doc:id="f16abf17-e738-4cb9-9123-5d25475664b2">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"source": "Shopify",
+	"data": payload
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<http:request method="POST" doc:name="s-salesforce /lead" doc:id="38084415-425a-40aa-8fea-6fc15a142615" config-ref="HTTP_Request_configuration_s-salesforce" path="${s-salesforce.basePath}${s-salesforce.lead.path}" />
+				<logger level="DEBUG" doc:name="payload" doc:id="7ba2da93-a289-4ce7-bd5c-4904d049b140" message="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]"/>
+				<choice doc:name="Choice" doc:id="1b6b2c5a-e028-4e07-8c25-d7402cd2f163" >
+					<when expression="#[sizeOf(payload filter () -&gt; ($.Status == false)) &gt; 0]">
+						<logger level="INFO" doc:name="KO a Brevo" doc:id="f983b472-2a14-4e49-9949-ba2d648a4633" message="KO a Brevo"/>
+						<ee:transform doc:name="dataToBrevo" doc:id="ec468bb2-92c4-4bc6-ad93-a4550f81d07d" >
+							<ee:message >
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="dataToBrevo" ><![CDATA[%dw 2.0
+output application/json
+
+var emailTo = (p('ecommerce.checkout.error.emailTo') splitBy (",")) map () -> {
+			    "email": $
+				}
+
+var errorList = (payload filter () -> ($.Status == false)) map () -> {
+			    	"id": $.Id_Commerce__c,
+	    			"mensaje": $.Error
+					}
+
+---
+{
+	"to": emailTo,
+	"templateId": p('ecommerce.checkout.error.templateId') as Number,
+	"params": {
+		"proceso": p('ecommerce.checkout.error.proceso-checkout'),
+		"items": errorList
+	}
+}]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+					</when>
+					<otherwise >
+						<logger level="INFO" doc:name="OK a Brevo" doc:id="8f9dd677-4ad1-49a7-955d-171ad48c16fd" message="OK a Brevo" />
+						<ee:transform doc:name="dataToBrevo" doc:id="e9a41b8d-a643-4eb9-b3da-c922f1eb675a" >
+							<ee:message />
+							<ee:variables >
+								<ee:set-variable variableName="dataToBrevo" ><![CDATA[%dw 2.0
+output application/json
+
+var emailTo = (p('ecommerce.checkout.success.emailTo') splitBy (",")) map () -> {
+    "email": $
+}
+
+var successList = sizeOf(payload filter () -> ($.Status == true)) as String
+
+---
+{
+	"to": emailTo,
+	"templateId": p('ecommerce.checkout.success.templateId') as Number,
+	"params": {
+		"proceso": p('ecommerce.checkout.success.proceso-checkout'),
+		"registros": successList
+	}
+}
+]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+					</otherwise>
+				</choice>
+				<flow-ref doc:name="brevoSendEmail_subFlow" doc:id="274aa0e6-b1bf-44c6-bbfe-26fbbb669698" name="brevoSendEmail_subFlow" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="42389e9c-b4e2-48ad-af67-f2e0b020eabe" message="No checkout records"/>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="END" doc:id="87ad001a-14da-4827-95ea-89b0ee9683ad" message="END Checkout_Flow" />
+	</flow>
+	<flow name="Quote_Flow" doc:id="b5973ded-eac4-4952-ad94-05ca5d445a78" maxConcurrency="1">
+		<scheduler doc:name="Scheduler" doc:id="b6372e65-60d1-480f-9d64-6eceec81edce" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="30" startDelay="30" timeUnit="MINUTES"/>
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="INIT" doc:id="5c5ee379-02f3-45d7-bc12-7563becbfe2a" message="INIT Quote_Flow" />
+		<choice doc:name="Choice" doc:id="0afc4af3-d08d-47a1-b16a-009c9338777d" >
+			<when expression="#[p('ecommerce.quote.shopify.order_id') != &quot;No&quot;]">
+				<ee:transform doc:name="Shopify Req" doc:id="070b92b2-8646-47ef-a488-d186d949f829">
+					<ee:message />
+					<ee:variables>
+						<ee:set-variable variableName="queryParams"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"ids": p('ecommerce.quote.shopify.order_id'),
+	"status": "any"
+}
+
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<logger level="INFO" doc:name="order_id" doc:id="d86c05cf-edf8-42a5-b729-e7b2507f2071" message='#["Shopify request - order_id: " ++ vars.queryParams.ids]' />
+			</when>
+			<when expression="#[p('ecommerce.quote.shopify.since_id') != &quot;No&quot;]">
+				<ee:transform doc:name="Shopify Req" doc:id="5f7b9e9a-feef-47cd-9c2a-3fe4fa12d215" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="queryParams" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"since_id": p('ecommerce.quote.shopify.since_id'),
+	"financial_status": "paid"
+}
+
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<logger level="INFO" doc:name="since_id" doc:id="f2dcd757-9feb-4f9e-8755-6741d725bcce" message='#["Shopify request - since_id: " ++ vars.queryParams.since_id]' />
+			</when>
+			<otherwise >
+				<http:request doc:name="s-salesforce /quote" doc:id="8866b87f-3895-4120-bca5-b73231f1673b" config-ref="HTTP_Request_configuration_s-salesforce" path="${s-salesforce.basePath}${s-salesforce.quote.path}" target="listQuote">
+			<http:body><![CDATA[#[{}]]]></http:body>
+			<http:query-params><![CDATA[#[output application/java
+---
+{
+	"limit" : p('ecommerce.quote.salesforce.listQuoteLimit')
+}]]]></http:query-params>
+		</http:request>
+				<logger level="INFO" doc:name="listQuote" doc:id="52cb5dc9-f52c-4f6d-96b6-eb22557e61fa" message="#[%dw 2.0&#10;output application/json&#10;---&#10;vars.listQuote]" />
+				<ee:transform doc:name="Shopify Req" doc:id="421b74bb-9135-4578-94cd-86e1a4cf6b26">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="queryParams"><![CDATA[%dw 2.0
+output application/json
+---
+if(!isEmpty(vars.listQuote)) {
+		"since_id": vars.listQuote[0].VCPQ_Id_Commerce__c,
+		"financial_status": "paid"
+	}
+	else ({"financial_status": "paid"})
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+				<logger level="INFO" doc:name="since_id" doc:id="9aa9216b-c75d-47b7-b06d-6d4beb251e76" message='#["Shopify request - since_id: " ++ if(!isEmpty(vars.queryParams.since_id)) vars.queryParams.since_id else "N/A"]' />
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="Shopify_Order_subFlow" doc:id="2ee4835e-8566-48db-8e36-259f3894cdde" name="Shopify_Order_subFlow"/>
+		<!-- [STUDIO:"s-shopify /order"]<http:request doc:name="s-shopify /order" doc:id="1aea64d9-303d-4761-bdea-eada39aba1dd" config-ref="HTTP_Request_configuration_s-shopify" path="${s-shopify.basePath}${s-shopify.order.path}">
+			<http:query-params><![CDATA[#[vars.queryParams&#93;&#93;&#93;></http:query-params>
+		</http:request> [STUDIO] -->
+		<logger level="DEBUG" doc:name="payload" doc:id="49421b27-9508-429f-98a6-e5cfe3efba78" message="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]"/>
+		<choice doc:name="Choice" doc:id="3efafd25-df69-4b34-a4ac-5e1196822a0b" >
+			<when expression="#[!isEmpty(payload.orders)]">
+				<logger level="INFO" doc:name="sizeOf(payload.orders)" doc:id="ec1088ec-3616-47ad-8551-8688a5c7fd47" message='#["Retrieved " ++ sizeOf(payload.orders) ++ " Records"]' />
+				<logger level="INFO" doc:name="Order IDs" doc:id="06494fe3-daee-4388-b6d6-9c038a056e71" message='#["Orders Retrieved: " ++ ((payload.orders map () -&gt; $.id as String) joinBy (" - "))]' />
+				<ee:transform doc:name="Format Quote Req" doc:id="56fb183a-f37b-4a88-bbde-84c20ec35b43" >
+					<ee:message >
+						<ee:set-payload resource="salesforce/quote.dwl" />
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Valid orders" doc:id="460d29ee-05ae-4f33-88e2-8f38864494ed" message='#["Orders with valid RUT &amp; Name: " ++ ((payload map () -&gt; $.opportunity_Id_Commerce__c as String) joinBy (" - "))]' />
+				<foreach doc:name="For Each payload" doc:id="2bb9071f-8fa2-48ca-84bb-455dd723c3e8" collection="#[payload]">
+					<try doc:name="Try" doc:id="e7920dc1-2660-413e-85ec-c6009e2cca42" >
+						<logger level="INFO" doc:name="payload" doc:id="e33fb8f5-7cc3-4b0f-bef7-c8d0b032f9bb" message="#[payload]"/>
+						<http:request doc:name="s-salesforce /order" doc:id="f6d5972d-322b-4e5b-b22d-51e67034b691" config-ref="HTTP_Request_configuration_s-salesforce" method="POST" path="${s-salesforce.basePath}${s-salesforce.quote.path}" />
+						<logger level="INFO" doc:name="payload" doc:id="a648e615-d912-4807-9cde-9c7e4caff5ac" message="#[payload]"/>
+						<error-handler >
+							<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="4126378b-d4ba-41df-a861-9c27ed74947c" type="ANY">
+								<logger level="INFO" doc:name="Logger" doc:id="6e042885-7955-4c9b-9ea1-edea491891e8" message="#[%dw 2.0&#10;output application/json&#10;---&#10;error.errorMessage.payload]"/>
+								<choice doc:name="Choice" doc:id="1d350ceb-16f5-4edc-ba32-d26ec8af9a24" >
+									<when expression="#[!isEmpty(error.errorMessage.payload.id) and !isEmpty(error.errorMessage.payload.message)]">
+										<ee:transform doc:name="errorList" doc:id="61228133-dfe2-4141-a096-4353c0d31818">
+									<ee:message />
+									<ee:variables>
+										<ee:set-variable variableName="errorList"><![CDATA[%dw 2.0
+output application/json
+---
+[{
+	"id": payload.opportunity_Id_Commerce__c ++ " - " ++ payload.opportunity_Name,
+	"mensaje": error.errorMessage.payload.message
+}]]]></ee:set-variable>
+									</ee:variables>
+								</ee:transform>
+										<ee:transform doc:name="dataToBrevo" doc:id="e451d54e-f833-4706-873c-14740815977d">
+									<ee:message />
+									<ee:variables>
+										<ee:set-variable variableName="dataToBrevo"><![CDATA[%dw 2.0
+output application/json
+
+var emailTo = (p('ecommerce.quote.error.emailTo') splitBy (",")) map () -> {
+			    "email": $
+				}
+---
+{
+	"to": emailTo,
+	"templateId": p('ecommerce.quote.error.templateId') as Number,
+	"params": {
+		"proceso": p('ecommerce.quote.error.proceso-quote'),
+		"items": vars.errorList
+	}
+}]]></ee:set-variable>
+									</ee:variables>
+								</ee:transform>
+										<flow-ref doc:name="brevoSendEmail_subFlow" doc:id="ad3fd680-c99a-4fe0-97df-984859c366d0" name="brevoSendEmail_subFlow" />
+									</when>
+								</choice>
+							</on-error-continue>
+						</error-handler>
+					</try>
+				</foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="b42b6416-9685-482d-9714-8c83111ff4e0" message="No order records" />
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="END" doc:id="8b6866a9-21a0-4ba1-867d-65462a9efe2d" message="END Quote_Flow" />
+	</flow>
+	<flow name="Stock_Flow" doc:id="5267809d-48bc-4c38-a1eb-18295c597ab7" maxConcurrency="1">
+		<scheduler doc:name="Scheduler" doc:id="15a3f277-fce7-403a-8329-6cf5712454f3" >
+			<scheduling-strategy >
+				<cron expression="0 0 5,13,21 ? * * *" timeZone="America/Santiago"/>
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="INIT" doc:id="4a5706c7-0571-4398-816d-b250d42bd7c2" message="INIT Stock_Flow" />
+		<http:request method="GET" doc:name="s-salesforce /product" doc:id="2f867aec-d004-41e1-929f-5566dd28860a" config-ref="HTTP_Request_configuration_s-salesforce" path="${s-salesforce.basePath}${s-salesforce.product.path}" target="listProduct">
+			<http:body><![CDATA[#[{}]]]></http:body>
+			<http:query-params><![CDATA[#[output application/java
+---
+{
+	"limit" : p('ecommerce.quote.salesforce.listQuoteLimit')
+}]]]></http:query-params>
+		</http:request>
+		<logger level="INFO" doc:name="listProduct" doc:id="348b3ad6-89eb-43e4-b8ea-43e2754a5fd8" message='#["Retrieved " ++ sizeOf(vars.listProduct) ++ " Products from SF"]' />
+		<choice doc:name="Choice" doc:id="cb47fe00-194a-4c39-bb4e-f8fbdffd5075" >
+			<when expression="#[!isEmpty(p('ecommerce.inventory.product')) and (p('ecommerce.inventory.product') != &quot;No&quot;)]">
+				<logger level="INFO" doc:name="Filter products" doc:id="d88304dd-e99a-4541-9c51-14231bce8695" message="#[&quot;Filter products: &quot; ++ p('ecommerce.inventory.product')]"/>
+				<ee:transform doc:name="Transform Message" doc:id="d7117fe4-c9a1-484a-9727-ff07b4e04267">
+					<ee:message>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="listProduct" ><![CDATA[%dw 2.0
+output application/json
+
+var productos = p('ecommerce.inventory.product') splitBy (",")
+
+---
+vars.listProduct filter (productos contains $.ProductCode)]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</when>
+		</choice>
+		<ee:transform doc:name="dataToSap" doc:id="f429e19f-7b59-4a35-8bc0-cbbac481740e">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="dataToSap"><![CDATA[%dw 2.0
+import divideBy from dw::core::Arrays
+output application/json
+---
+vars.listProduct.ProductCode divideBy 10
+]]></ee:set-variable>
+				<ee:set-variable variableName="listStock" ><![CDATA[%dw 2.0
+output application/java
+---
+[]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each dataToSap" doc:id="307b5a65-a397-4530-adf5-4a2a0245d1c2" collection="#[vars.dataToSap]">
+			<logger level="INFO" doc:name="Calling SAP" doc:id="e994c4b1-ebb1-486a-80e3-943ab648fbe9" message="Calling SAP" />
+			<http:request method="POST" doc:name="s-sap /stock" doc:id="1dc39bfe-61ff-4314-a8ab-0f3bcecfd20d" config-ref="HTTP_Request_configuration_s-sap" path="${s-sap.basePath}${s-sap.stock.path}" target="respSap">
+		</http:request>
+			<logger level="DEBUG" doc:name="respSap" doc:id="9d8888cf-64a4-468b-93c7-2850108dae7e" message="#[vars.respSap]"/>
+			<logger level="INFO" doc:name="listStock" doc:id="ae5b767d-b1ac-4b5f-aa2d-8b83e3ef7dda" message='#["Retrieved " ++ sizeOf(vars.respSap) ++ " Products from SAP"]' />
+			<ee:transform doc:name="Add to listStock" doc:id="727b4436-58f4-4d8d-a0b3-7a1ccdba815c" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="listStock" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.listStock ++ vars.respSap]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="Filter valid Bodegas" doc:id="1d5a40d0-05cc-4fa9-966e-5dc1f7b1de18">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="listStock"><![CDATA[%dw 2.0
+import update from dw::util::Values
+output application/json
+
+var listBodegas = ["CV03","FV03","CV04","AV03"]
+---
+
+vars.listStock map () -> (
+    $ update "stock" with ($ filter (listBodegas contains $.WERKS))
+)]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="listProduct" doc:id="c9f95f43-049d-4692-84b4-976a60b920c0" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="listProduct" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.listProduct map (item,index) -> {
+	"ProductCode": item.ProductCode,
+    "inventory_item_id": item.Inventory_Item_Id__c,
+    "location_id": "78984872107",
+    "inventory_level": if(!isEmpty((vars.listStock filter (stock,stockIndex) -> (item.ProductCode == stock.product))[0].stock.STOCK)) (sum((vars.listStock filter (stock,stockIndex) -> (item.ProductCode == stock.product))[0].stock.STOCK) / (item.Factor_Conversion_Commerce__c as Number)) else 0
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="DEBUG" doc:name="listProduct" doc:id="56a6ef23-eac2-42bc-b7c0-a2cfd5cd6c59" message="#[vars.listProduct]"/>
+		<choice doc:name="Choice" doc:id="b0f4d8da-0639-464c-a480-c19872a3c7b5" >
+			<when expression="#[p('ecommerce.inventory.sendToShopify') == &quot;Yes&quot;]">
+				<logger level="INFO" doc:name="sendToShopify" doc:id="414b18c4-3b86-42c8-97ff-dbb6454c064f" message='#["Send To Shopify"]' />
+				<flow-ref doc:name="Shopify_Inventory_subFlow" doc:id="7c6eda2a-1e29-4dc7-9173-009795a0151c" name="Shopify_Inventory_subFlow" target="respListProduct"/>
+				<!-- [STUDIO:"s-shopify /inventory"]<http:request method="POST" doc:name="s-shopify /inventory" doc:id="879976b9-ea4c-4ca2-97b9-267be1b1aec0" config-ref="HTTP_Request_configuration_s-shopify" path="${s-shopify.basePath}${s-shopify.inventory.path}" target="respListProduct">
+			<http:body><![CDATA[#[vars.listProduct&#93;&#93;&#93;></http:body>
+		</http:request> [STUDIO] -->
+				<logger level="INFO" doc:name="respListProduct" doc:id="8c96170f-9183-4f14-aaef-c809bb66e8e0" message="#[vars.respListProduct]" />
+				<ee:transform doc:name="Prepare Success Email Message" doc:id="a8f55dba-d6e4-4c05-a4cc-27a09897c3a0" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="dataToBrevo" ><![CDATA[%dw 2.0
+output application/json
+
+var emailTo = (p('ecommerce.inventory.success.email') splitBy (",")) map () -> {
+    "email": $
+}
+
+---
+{
+	"to": emailTo,
+	"templateId": p('ecommerce.inventory.success.templateId') as Number,
+	"params": {
+		"proceso": p('ecommerce.inventory.success.proceso'),
+		"registros": sizeOf(vars.listProduct) as String
+	}
+}
+
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="sendEmail_subFlow" doc:id="7e27696a-22f4-47ab-a426-037cd6bc0742" name="brevoSendEmail_subFlow" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="sendToShopify" doc:id="4559391b-7d2b-457e-a608-2a0698b2daed" message='#["Send To Shopify != Yes"]'/>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="END" doc:id="754bd607-5c71-4015-b5fc-0571f2b2eb29" message="END Stock_Flow" />
+	</flow>
+	<flow name="Leads-GFK-File_Flow" doc:id="21e0488a-58fe-4670-b24c-9a3f26972b8e" maxConcurrency="1" >
+		<scheduler doc:name="Scheduler" doc:id="d1382111-e250-4a31-bf9d-8ffda2121893" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="1" startDelay="1" timeUnit="DAYS" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="START" doc:id="eb340472-2bfa-42c6-a4fb-16800a125052" message="START"/>
+		<ee:transform doc:name="Init vars" doc:id="f89465f4-95c2-4e17-bbc5-d31aca3733b6" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="gfkPath" ><![CDATA[%dw 2.0
+output application/json
+---
+p('gfk.basePath') ++ p('gfk.leadFile.path') ++ (((now() as Date) - |P1D|) as String { format: "yyyyMMdd" }) ++ ".csv"
+//p('gfk.basePath') ++ p('gfk.leadFile.path') ++ "20260803.csv"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<http:request doc:name="GFK /lead" doc:id="cc7e2b5b-6826-4f30-9960-a96f34d688d9" config-ref="HTTP_Request_config_Gfk" path="#[vars.gfkPath]" />
+		<logger level="INFO" doc:name="payload" doc:id="065a0933-2415-480c-a23b-3d53b67ab13d" message="#[payload]" />
+		<ee:transform doc:name="Format Lead Req" doc:id="65ace4c0-095f-4b82-8e72-84e724d01101" >
+			<ee:message >
+				<ee:set-payload resource="salesforce/leadGFK.dwl" />
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Add source" doc:id="5a391eb5-43ec-43ad-8945-568bc3183eca" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"source": "GFK",
+	"data": payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="payload" doc:id="1b302efc-2e1e-4fc7-8a1d-41070a7a451e" message="#[payload]" />
+		<http:request doc:name="s-salesforce /lead" doc:id="2060bf43-5c79-499e-985d-ef49a540cb32" config-ref="HTTP_Request_configuration_s-salesforce" method="POST" path="${s-salesforce.basePath}${s-salesforce.lead.path}" />
+		<logger level="INFO" doc:name="END" doc:id="7ddfb140-769b-47ad-a8d5-62f984b28c86" message="END"/>
+	</flow>
+	<!-- [STUDIO:"Leads-GFK-FileList_Flow"]<flow name="Leads-GFK-FileList_Flow" doc:id="f04e3070-5b45-4cba-9c78-a6301dea48b6" maxConcurrency="1" >
+		<scheduler doc:name="Scheduler" doc:id="c5f3e86b-0c52-4be5-bc56-a9d5247f8fea" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="1" startDelay="1" timeUnit="DAYS" />
+			</scheduling-strategy>
+		</scheduler>
+		<ee:transform doc:name="Init vars" doc:id="a5e435db-6458-4b6d-8c1d-554963accc0c" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="gfkPath" ><![CDATA[%dw 2.0
+output application/json
+&#45;&#45;-
+p('gfk.leadFileList.path')&#93;&#93;></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<http:request doc:name="Request" doc:id="cda9bd04-dca5-4aae-9f94-747c42438535" config-ref="HTTP_Request_config_Gfk" path="#[vars.gfkPath&#93;" />
+		<logger level="INFO" doc:name="payload" doc:id="0ac5af16-5e01-4e71-ab3f-97fbcbda6f0f" message="#[payload&#93;" />
+	</flow> [STUDIO] -->
+</mule>

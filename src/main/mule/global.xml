@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<global-property doc:name="Global Property" doc:id="6526fca8-3095-452f-a3c0-bc762950a05a" name="env" value="local" />
+	<configuration-properties doc:name="Configuration properties" doc:id="3780b868-707c-4d8e-ba13-70eaf59bfe14" file="p-ecommerce-${env}.yaml" />
+	<http:request-config name="HTTP_Request_configuration_s-salesforce" doc:name="HTTP Request configuration" doc:id="0ce8b9dc-37f4-4cb7-8ebd-e257d29313b3" responseTimeout="${timeout.response}">
+		<http:request-connection host="${s-salesforce.host}" port="${s-salesforce.port}" connectionIdleTimeout="${timeout.idle}">
+			<reconnection >
+				<reconnect frequency="5000" count="3" />
+			</reconnection>
+		</http:request-connection>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_configuration_s-sap" doc:name="HTTP Request configuration" doc:id="e459b99d-96aa-41e7-8c65-e0c336a7da49" responseTimeout="${timeout.response}">
+		<http:request-connection host="${s-sap.host}" port="${s-sap.port}" connectionIdleTimeout="${timeout.idle}">
+			<reconnection >
+				<reconnect frequency="5000" count="3" />
+			</reconnection>
+		</http:request-connection>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_config_Shopify" doc:name="HTTP_Request_config_Shopify" doc:id="3200d678-d12f-44c9-a07b-e6eb9352699c" >
+		<http:request-connection protocol="HTTPS" host="${shopify.host}" port="${shopify.port}">
+			<reconnection >
+				<reconnect frequency="5000" count="3" />
+			</reconnection>
+		</http:request-connection>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_Brevo" doc:name="HTTP Request configuration" doc:id="1e3de50f-c536-44c3-bfa4-47f0a10c755f" responseTimeout="${timeout.response}">
+		<http:request-connection host="${brevo.host}" port="${brevo.port}">
+			<reconnection >
+				<reconnect frequency="5000" count="3" />
+			</reconnection>
+		</http:request-connection>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_config_Gfk" doc:name="HTTP_Request_config_Shopify" doc:id="eacf600c-6441-4514-a7b5-7e1130687699" >
+		<http:request-connection host="${gfk.host}" port="${gfk.port}">
+			<reconnection >
+				<reconnect frequency="5000" count="3" />
+			</reconnection>
+			<http:authentication >
+				<http:basic-authentication username="${gfk.user}" password="${gfk.pass}" />
+			</http:authentication>
+</http:request-connection>
+</http:request-config>
+</mule>

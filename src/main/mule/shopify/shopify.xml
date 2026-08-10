@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<sub-flow name="Shopify_Checkout_subFlow" doc:id="551cd4be-a93f-458a-af4c-f23f6826eee8" >
+		<ee:transform doc:name="s-shopify Req" doc:id="79459f48-484e-48ff-b876-50ffa9898f88" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="queryParams" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"created_at_min": if(!isEmpty(p('ecommerce.checkout.created_at_min'))) (p('ecommerce.checkout.created_at_min')) else (now() - |P2D|)
+}]]></ee:set-variable>
+				<ee:set-variable variableName="header" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"X-Shopify-Access-Token" : p('shopify.password')
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="created_at_min" doc:id="1b8236ed-5994-491c-8d48-928567e5bbdc" message='#["Shopify request - created_at_min: " ++ vars.queryParams.created_at_min]' />
+		<http:request doc:name="Shopify Checkout" doc:id="21c35826-0896-4e3f-98ef-9d1d472206d9" config-ref="HTTP_Request_config_Shopify" path="${shopify.basePath}${shopify.checkout.path}" >
+			<http:headers ><![CDATA[#[vars.header]]]></http:headers>
+			<http:query-params ><![CDATA[#[vars.queryParams]]]></http:query-params>
+		</http:request>
+	</sub-flow>
+	<sub-flow name="Shopify_Order_subFlow" doc:id="ad5f667a-d995-48e7-933f-985d5c4eb37f" >
+		<ee:transform doc:name="Shopify Req" doc:id="0724786d-c973-422d-bec4-6cf449cb42c3" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="header" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"X-Shopify-Access-Token" : p('shopify.password')
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<http:request doc:name="Shopify Order" doc:id="ffd7fa6d-0c19-4625-bc49-88a96235e220" config-ref="HTTP_Request_config_Shopify" path="${shopify.basePath}${shopify.order.path}" >
+			<http:headers ><![CDATA[#[vars.header]]]></http:headers>
+			<http:query-params ><![CDATA[#[vars.queryParams]]]></http:query-params>
+		</http:request>
+		<foreach doc:name="For Each" doc:id="cf0fb3de-1d80-4fe1-a478-4700c50a81c5" collection="#[payload.orders]" >
+			<ee:transform doc:name="Shopify Req" doc:id="79279d9b-c57b-49ca-91b8-7047f6465a8b" >
+				<ee:message />
+				<ee:variables >
+					<ee:set-variable variableName="header" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"X-Shopify-Access-Token" : p('shopify.password')
+}]]></ee:set-variable>
+					<ee:set-variable variableName="uriParams" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"transactionId": payload.id
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<http:request doc:name="Shopify Transaction" doc:id="24fc6113-d97b-458e-8911-c5104b1b7dc3" config-ref="HTTP_Request_config_Shopify" path="${shopify.basePath}${shopify.orderTransaction.path}" target="orderTransaction" >
+				<http:headers ><![CDATA[#[vars.header]]]></http:headers>
+				<http:uri-params ><![CDATA[#[vars.uriParams]]]></http:uri-params>
+			</http:request>
+			<logger level="INFO" doc:name="orderTransaction" doc:id="1e8aeadd-9bba-4cad-b310-b415307ef1bd" message="#[vars.orderTransaction]" />
+			<ee:transform doc:name="Add to Order List" doc:id="0bdbc670-db79-4898-8aaf-a838d13a0ae3" >
+				<ee:message />
+				<ee:variables >
+					<ee:set-variable variableName="listOrder" ><![CDATA[%dw 2.0
+output application/json
+---
+(vars.listOrder default []) ++ [payload ++ vars.orderTransaction]]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="Format response" doc:id="6cf91803-a6e4-4010-9f7a-06525890e9a9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"orders": vars.listOrder
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="DEBUG" doc:name="payload" doc:id="26e02587-3d88-4c21-8f73-93996eccc58b" message="#[payload]"/>
+	</sub-flow>
+	<sub-flow name="Shopify_Inventory_subFlow" doc:id="c4270b53-2228-4095-ba1e-4167cb7d0903" >
+		<ee:transform doc:name="INIT Vars" doc:id="0e08198a-6510-4b27-83c7-eb8a382b3599" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="errorList" ><![CDATA[%dw 2.0
+output application/json
+---
+[]]]></ee:set-variable>
+				<ee:set-variable variableName="header" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"X-Shopify-Access-Token" : p('shopify.password')
+}]]></ee:set-variable>
+				<ee:set-variable variableName="listProduct" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "query": "mutation SetQuantities(\$input: InventorySetQuantitiesInput!) { inventorySetQuantities(input: \$input) { inventoryAdjustmentGroup { createdAt reason referenceDocumentUri changes { name delta item { id } location { id } } } userErrors { field message } } }",
+  "variables": {
+    "input": {
+      "name": "on_hand",
+      "reason": "correction",
+      "referenceDocumentUri": "sap://mulesoft/update/" ++ now(),
+      "ignoreCompareQuantity": true,
+      "quantities": (vars.listProduct map (item,index) -> {
+          "inventoryItemId": "gid://shopify/InventoryItem/" ++ (item.inventory_item_id as String),
+          "locationId": "gid://shopify/Location/" ++ (item.location_id as String),
+          "quantity": (item.inventory_level as String {format: "0", roundMode:"DOWN"} as Number)
+          }
+      )
+    }
+  }
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="a3eb3d36-5513-4547-b2b4-d06242e4bf79" message="#[vars.listProduct]" />
+		<until-successful maxRetries="3" doc:name="Until Successful" doc:id="3934d6ee-222f-4db7-8c6f-a5291eb83122" millisBetweenRetries="5000">
+			<http:request doc:name="Shopify Inventory" doc:id="27badfc0-2d6f-4f7c-8294-6dc306c0b545" config-ref="HTTP_Request_config_Shopify" method="POST" path="${shopify.basePath}${shopify.inventory.path}" target="respListProduct">
+				<http:body><![CDATA[#[vars.listProduct]]]></http:body>
+				<http:headers><![CDATA[#[vars.header]]]></http:headers>
+			</http:request>
+		</until-successful>
+	</sub-flow>
+</mule>

@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_ad5f667a_d995_48e7_933f_985d5c4eb37f_Input_Variables_listQuote = Any
+

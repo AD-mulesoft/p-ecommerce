@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_c4270b53_2228_4095_ba1e_4167cb7d0903_Output_Variables_errorList = Array<Nothing>
+

@@ -1,0 +1,123 @@
+http:
+  host: "0.0.0.0"
+  port: "8096"
+
+timeout:
+  read: "300000"
+  response: "300000"
+  idle: "300000"
+
+s-salesforce:
+  protocol: "HTTP"
+  host: "s-salesforce-nswx31.internal-5qufiz.usa-e2.cloudhub.io"
+  port: ""
+  basePath: "/api"
+  lead:
+    path: "/lead"
+  quote:
+    path: "/quote"
+  product:
+    path: "/product"   
+
+shopify:
+  host: "volcancl.myshopify.com"
+  port: ""
+  userName: "e45f6a32491b5f005a1211e5025ad585"
+  password: "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"
+  baseUri: "https://volcancl.myshopify.com"
+  basePath: "admin/api/2025-10/"
+  checkout:
+    path: "checkouts.json"
+  order:
+    path: "orders.json"
+  orderTransaction:
+    path: "orders/{transactionId}/transactions.json"
+  inventory:
+    path: "graphql.json"
+
+brevo:
+  protocol: "HTTPS"
+  host: "api.brevo.com"
+  port: ""
+  api-key: "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"
+  path:
+    importContacts: "/v3/contacts"
+    sendSurvey: "/v3/smtp/email"
+    sendEmail: "/v3/smtp/email"
+
+gfk:
+  host: "www.gfkcr.com.br"
+  port: "1024"
+  user: "volcan_api"
+  pass: "Ap7Voc@n_N&Q_2@2"
+  basePath: "gfk_volcan_json2"
+  leadFile:
+    path: "/ioc_chile_"
+  leadFileList:
+    path: "/gfk_volcan_files"
+
+s-shopify:
+  protocol: "HTTP"
+  host: "s-shopify-nswx31.internal-5qufiz.usa-e2.cloudhub.io"
+  port: ""
+  basePath: "/api"
+  checkout:
+    path: "/checkout"
+  order:
+    path: "/order"
+  inventory:
+    path: "/inventory"
+
+s-brevo:
+  protocol: "HTTP"
+  host: "s-brevo-nswx31.internal-5qufiz.usa-e2.cloudhub.io"
+  port: ""
+  basePath: "/api"
+  email:
+    path: "/email"
+
+s-sap:
+  protocol: "HTTP"
+  host: "s-sap-nswx31.internal-5qufiz.usa-e2.cloudhub.io"
+  port: ""
+  basePath: "/api"
+  stock:
+    path: "/stock"
+
+ecommerce:
+  checkout:
+    created_at_min: ""
+    error:
+      emailTo: "mulesoft@alercesdigital.com,lvera@volcan.cl"
+      templateId: "139"
+      proceso-checkout: "Sincronización de checkout"
+    success:
+      emailTo: "mulesoft@alercesdigital.com,lvera@volcan.cl"
+      templateId: "225"
+      proceso-checkout: "Sincronización de checkout"
+  quote:
+    shopify:
+      order_id: "No"
+      since_id: "No"
+    salesforce:
+      listQuoteLimit: "1"
+    error:
+      emailTo: "mulesoft@alercesdigital.com,lvera@volcan.cl"
+      templateId: "139"
+      proceso-quote: "Sincronización de cotizaciones"
+    success:
+      emailTo: "mulesoft@alercesdigital.com,lvera@volcan.cl"
+      templateId: "225"
+      proceso-quote: "Sincronización de cotizaciones"
+  inventory:
+    product: "No"
+    sendToShopify: "No"
+    success:
+      email: "mulesoft@alercesdigital.com,lvera@volcan.cl"
+      templateId: "225"
+      proceso: "Actualizacion de stock"
+  xRef:
+    province_code_QPC_RM: "Metropolitana"
+    province_code_RM: "Metropolitana de Santiago"
+    city_Maipu: "Maipú"
+    source_name_web: "Ecommerce"

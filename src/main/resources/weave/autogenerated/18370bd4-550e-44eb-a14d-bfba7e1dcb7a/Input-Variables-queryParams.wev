@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_18370bd4_550e_44eb_a14d_bfba7e1dcb7a_Input_Variables_queryParams = {| created_at_min: String | DateTime |}
+

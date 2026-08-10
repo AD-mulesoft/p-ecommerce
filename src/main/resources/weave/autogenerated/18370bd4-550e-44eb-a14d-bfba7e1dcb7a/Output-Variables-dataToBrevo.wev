@@ -1,0 +1,11 @@
+%dw 2.0
+
+type auto_18370bd4_550e_44eb_a14d_bfba7e1dcb7a_Output_Variables_dataToBrevo = {|
+  to: Array<{| email: String |}>, 
+  templateId: Number, 
+  params: {|
+    proceso: String, 
+    items: Any
+  |}
+|}
+
