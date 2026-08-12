@@ -401,6 +401,7 @@ p('gfk.basePath') ++ p('gfk.leadFile.path') ++ (((now() as Date) - |P1D|) as Str
 			</ee:variables>
 		</ee:transform>
 		<http:request doc:name="GFK /lead" doc:id="cc7e2b5b-6826-4f30-9960-a96f34d688d9" config-ref="HTTP_Request_config_Gfk" path="#[vars.gfkPath]" />
+		<logger level="INFO" doc:name="sizeOf(payload)" doc:id="e03546ad-30fc-4915-8861-b1ee745962d6" message='#["Received " ++ sizeOf(payload) as String ++ " records"]'/>
 		<logger level="DEBUG" doc:name="payload" doc:id="065a0933-2415-480c-a23b-3d53b67ab13d" message="#[payload]" />
 		<ee:transform doc:name="Format Lead Req" doc:id="65ace4c0-095f-4b82-8e72-84e724d01101" >
 			<ee:message >
@@ -414,16 +415,21 @@ output application/json
 ---
 {
 	"source": "GFK",
-	"data": payload
+	"data": payload[0 to (p('leadGFKrecords'))]
+//	"data": payload
 }]]></ee:set-payload>
 			</ee:message>
+			<ee:variables >
+			</ee:variables>
 		</ee:transform>
 		<logger level="DEBUG" doc:name="payload" doc:id="1b302efc-2e1e-4fc7-8a1d-41070a7a451e" message="#[payload]" />
-		<http:request doc:name="s-salesforce /lead" doc:id="2060bf43-5c79-499e-985d-ef49a540cb32" config-ref="HTTP_Request_configuration_s-salesforce" method="POST" path="${s-salesforce.basePath}${s-salesforce.lead.path}" />
+		<logger level="INFO" doc:name="Send to SF" doc:id="7b6e908e-aa03-400a-8351-8b7471c67021" message='#["Send to SF " ++ sizeOf(payload.data) as String ++ " records"]'/>
+		<http:request doc:name="s-salesforce /lead" doc:id="7baddec3-6452-4b84-8389-3a80ab8b5114" config-ref="HTTP_Request_configuration_s-salesforce" method="POST" path="${s-salesforce.basePath}${s-salesforce.lead.path}" >
+		</http:request>
 		<logger level="INFO" doc:name="END" doc:id="7ddfb140-769b-47ad-a8d5-62f984b28c86" message="END"/>
 		<error-handler >
-			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="77552bc3-0343-414b-871a-e9b1a39c94d6" type="HTTP:NOT_FOUND" >
-				<logger level="INFO" doc:name="Logger" doc:id="612cb3b2-eff0-479e-a465-f337656086ea" message="#[%dw 2.0&#10;output application/json&#10;---&#10;error.errorMessage.payload]" />
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="77552bc3-0343-414b-871a-e9b1a39c94d6" type="HTTP:NOT_FOUND,HTTP:CONNECTIVITY" >
+				<logger level="INFO" doc:name="Logger" doc:id="612cb3b2-eff0-479e-a465-f337656086ea" message="#[%dw 2.0&#10;output application/json&#10;---&#10;error]" />
 			</on-error-propagate>
 		</error-handler>
 	</flow>

@@ -3,7 +3,7 @@ output application/json
 fun trunc80 (value) = if((!isEmpty(value)) and (sizeOf(value) > 79)) value[0 to 79] else value
 fun trunc255 (value) = if((!isEmpty(value)) and (sizeOf(value) > 254)) value[0 to 254] else value
 ---
-(payload map () -> {
+payload map () -> {
 	"Id_GFK__c": $.id_ioc as String,
 	"LastName": trunc80($.nombre) default "SIN NOMBRE",
 	"Nombre_Proyecto_GFK__c": trunc255($.nombre) default "SIN NOMBRE",
@@ -22,4 +22,4 @@ fun trunc255 (value) = if((!isEmpty(value)) and (sizeOf(value) > 254)) value[0 t
     "Street": $.direccion default "",
     "Comuna_Zona_de_transporte__c": $.comuna default "",
     "Region__c": $.region default ""
-})
+}
