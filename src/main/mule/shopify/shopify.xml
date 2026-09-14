@@ -67,7 +67,7 @@ output application/json
 				<http:headers ><![CDATA[#[vars.header]]]></http:headers>
 				<http:uri-params ><![CDATA[#[vars.uriParams]]]></http:uri-params>
 			</http:request>
-			<logger level="INFO" doc:name="orderTransaction" doc:id="1e8aeadd-9bba-4cad-b310-b415307ef1bd" message="#[vars.orderTransaction]" />
+			<logger level="DEBUG" doc:name="orderTransaction" doc:id="1e8aeadd-9bba-4cad-b310-b415307ef1bd" message="#[vars.orderTransaction]" />
 			<ee:transform doc:name="Add to Order List" doc:id="0bdbc670-db79-4898-8aaf-a838d13a0ae3" >
 				<ee:message />
 				<ee:variables >

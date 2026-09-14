@@ -24,8 +24,8 @@ shopify:
   host: "volcancl.myshopify.com"
   port: ""
   userName: "e45f6a32491b5f005a1211e5025ad585"
-  password: "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"
-  baseUri: "https://volcancl.myshopify.com"
+  password: "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"
+  baseUri: "https://volcan-staging.myshopify.com"
   basePath: "admin/api/2025-10/"
   checkout:
     path: "checkouts.json"

@@ -7,7 +7,7 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 	<global-property doc:name="Global Property" doc:id="6526fca8-3095-452f-a3c0-bc762950a05a" name="env" value="local" />
 	<configuration-properties doc:name="Configuration properties" doc:id="3780b868-707c-4d8e-ba13-70eaf59bfe14" file="p-ecommerce-${env}.yaml" />
 	<http:request-config name="HTTP_Request_configuration_s-salesforce" doc:name="HTTP Request configuration" doc:id="0ce8b9dc-37f4-4cb7-8ebd-e257d29313b3" responseTimeout="${timeout.response}">
-		<http:request-connection host="${s-salesforce.host}" port="${s-salesforce.port}" connectionIdleTimeout="${timeout.idle}">
+		<http:request-connection host="${s-salesforce.host}" port="${s-salesforce.port}" connectionIdleTimeout="${timeout.idle}" protocol="HTTPS">
 			<reconnection >
 				<reconnect frequency="5000" count="3" />
 			</reconnection>

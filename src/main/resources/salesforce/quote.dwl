@@ -14,13 +14,16 @@ output application/json
 					else
 					($.note_attributes filter (note,noteindex) -> (note.name == "razon_social"))[0]."value" default "",
 	"account_Pais__c": $.billing_address.country default "",
-	"account_Calle_Numero__c": if ((($.note_attributes filter (note,noteindex) -> (note.name == "tipo_documento"))[0]."value") == "boleta" ) (($.shipping_address.address1 default "") ++ " " ++ ($.shipping_address.address2 default ""))
+	"account_Calle_Numero__c": if ((($.note_attributes filter (note,noteindex) -> (note.name == "tipo_documento"))[0]."value") == "boleta" ) (($.shipping_address.company default "N/A") ++ ", " ++ ($.shipping_address.address1 default "N/A"))
 					else
-					($.note_attributes filter (note,noteindex) -> (note.name == "direccion_factura"))[0]."value" default "",
+					((($.note_attributes filter (note,noteindex) -> (note.name == "direccion_factura_calle"))[0]."value" default "N/A") ++ ", " ++ (($.note_attributes filter (note,noteindex) -> (note.name == "direccion_factura_numero"))[0]."value" default "N/A")),
 	"account_Global_Comuna_Zona_de_transporte__c": if ((($.note_attributes filter (note,noteindex) -> (note.name == "tipo_documento"))[0]."value") == "boleta" ) ($.shipping_address.city default "") else
 					($.note_attributes filter (note,noteindex) -> (note.name == "comuna_factura"))[0]."value" default "",
 	"account_Incoterms_parte_2__c": if ((($.note_attributes filter (note,noteindex) -> (note.name == "tipo_documento"))[0]."value") == "boleta" ) ($.shipping_address.city default "") else
 					($.note_attributes filter (note,noteindex) -> (note.name == "comuna_factura"))[0]."value" default "",
+    "account_VLC_Observaciones_Direccion__c": if ((($.note_attributes filter (note,noteindex) -> (note.name == "tipo_documento"))[0]."value") == "boleta" ) ($.shipping_address.address2 default "N/A")
+					else
+					(($.note_attributes filter (note,noteindex) -> (note.name == "direccion_factura_complemento"))[0]."value" default "N/A"),
 	"flagBoletaFactura": if ((($.note_attributes filter (note,noteindex) -> (note.name == "tipo_documento"))[0]."value") == "boleta" ) "boleta" else "factura",
 	
 	"contact_FirstName": $.customer.first_name default "",
@@ -36,10 +39,11 @@ output application/json
 					else
 					($.note_attributes filter (note,noteindex) -> (note.name == "razon_social"))[0]."value" default "",
 	"tiendaObra_RUT__c": ($.note_attributes filter (note,noteindex) -> (note.name == "company"))[0]."value" default "",
-	"tiendaObra_Calle_Numero__c": (($.shipping_address.address1 default "") ++ " " ++ ($.shipping_address.address2 default "")),
+	"tiendaObra_Calle_Numero__c": (($.shipping_address.company default "N/A") ++ ", " ++ ($.shipping_address.address1 default "N/A")),
 	"tiendaObra_Global_Comuna_Zona_de_transporte__c": $.shipping_address.city default "",
 	"tiendaObra_Pais__c": $.shipping_address.country default "",
-	"tienda_ShippingAdress": ($.note_attributes filter (note,noteindex) -> (note.name == "direccion_factura"))[0]."value" default "",
+    "tiendaObra_VLC_Observaciones_Direccion__c": $.shipping_address.address2 default "",
+	"tiendaObra_ShippingAdress": ($.note_attributes filter (note,noteindex) -> (note.name == "direccion_factura"))[0]."value" default "",
 
 
 	"opportunity_Id_Commerce__c": $.id as String,
