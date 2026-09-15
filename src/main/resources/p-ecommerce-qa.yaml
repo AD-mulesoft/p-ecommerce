@@ -21,7 +21,7 @@ s-salesforce:
     path: "/product"
 
 shopify:
-  host: "volcancl.myshopify.com"
+  host: "volcan-staging.myshopify.com"
   port: ""
   userName: "e45f6a32491b5f005a1211e5025ad585"
   password: "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"
